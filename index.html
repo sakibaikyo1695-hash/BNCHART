@@ -292,6 +292,23 @@ function haversineNM(lat1,lon1,lat2,lon2){
   return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a))/1852;
 }
 
+function calculateBearing(lat1, lon1, lat2, lon2) {
+  const toRad = v => v * Math.PI / 180;
+  const toDeg = v => v * 180 / Math.PI;
+  
+  const φ1 = toRad(lat1);
+  const φ2 = toRad(lat2);
+  const Δλ = toRad(lon2 - lon1);
+  
+  const y = Math.sin(Δλ) * Math.cos(φ2);
+  const x = Math.cos(φ1) * Math.sin(φ2) - Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ);
+  
+  let bearing = toDeg(Math.atan2(y, x));
+  bearing = (bearing + 360) % 360; // Normalize to 0-360
+  
+  return bearing;
+}
+
 function makeRoute(){
   if(selected.length<2){alert('Select at least 2'); return;}
 
@@ -314,9 +331,10 @@ function makeRoute(){
     const a=waypoints.find(w=>w.id===selected[i]);
     const b=waypoints.find(w=>w.id===selected[i+1]);
     const dist=haversineNM(a.lat,a.lon,b.lat,b.lon);
+    const bearing=calculateBearing(a.lat,a.lon,b.lat,b.lon);
     total+=dist;
     const time=speed>0 ? (dist/speed*60) : 0;
-    routeSummaryDiv.innerHTML+=`${a.name} → ${b.name}: ${dist.toFixed(2)} NM, ${time.toFixed(1)} min<br>`;
+    routeSummaryDiv.innerHTML+=`${a.name} → ${b.name}: ${dist.toFixed(2)} NM, ${bearing.toFixed(1)}°, ${time.toFixed(1)} min<br>`;
   }
   routeSummaryDiv.innerHTML+=`<b>Total:</b> ${total.toFixed(2)} NM`;
 }
@@ -378,3 +396,20 @@ loadLocal();
 
 </body>
 </html>
+```
+
+**Key changes made:**
+
+1. **Added `calculateBearing()` function**: This calculates the true bearing (0-360°) from one waypoint to another using the standard aviation formula
+
+2. **Updated route summary**: Each leg now shows:
+   - Waypoint A → Waypoint B
+   - Distance in NM
+   - **Bearing in degrees (°)** - NEW!
+   - Time in minutes (if speed is entered)
+
+**Example output:**
+```
+WP-1 → WP-2: 15.43 NM, 045.2°, 18.5 min
+WP-2 → WP-3: 22.18 NM, 137.8°, 26.6 min
+Total: 37.61 NM
