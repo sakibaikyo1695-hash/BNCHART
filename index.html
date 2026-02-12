@@ -8,7 +8,6 @@
 
 <style>
 body { margin:0; padding:0; font-family:Arial, sans-serif; }
-
 #map { position:absolute; top:0; bottom:0; left:0; right:320px; }
 
 #sidebar {
@@ -53,16 +52,8 @@ input[type=text], textarea {
   align-items: center;
 }
 
-.coord-input-group input {
-  flex: 1;
-  padding: 6px;
-  margin: 0;
-}
-
-.coord-input-group select {
-  padding: 6px;
-  margin: 0;
-}
+.coord-input-group input { flex: 1; padding: 6px; margin: 0; }
+.coord-input-group select { padding: 6px; margin: 0; }
 
 .coord-label {
   font-size: 12px;
@@ -94,7 +85,6 @@ input[type=text], textarea {
   font-weight:bold;
 }
 
-/* iPad / smaller screens */
 @media (max-width: 900px){
   #map{ right:0; bottom:45%; }
   #sidebar{
@@ -116,33 +106,27 @@ input[type=text], textarea {
 <div id="credit">MADE BY LT CDR SADMAN, P NO 3223</div>
 
 <div id="sidebar">
-  <h3>BN Chart 70001 by Sadman</h3>
+  <h3>BN Chart System</h3>
   <small class="small">Click map to add waypoint. Click waypoint to select/edit.</small>
 
   <h4>Jump to Location:</h4>
   
   <div class="coord-label">Latitude:</div>
   <div class="coord-input-group">
-    <input id="latDeg" placeholder="Deg" type="text" style="width:50px;"/>
+    <input id="latDeg" placeholder="Deg" type="text"/>
     <span>°</span>
-    <input id="latMin" placeholder="Min" type="text" style="width:60px;"/>
+    <input id="latMin" placeholder="Min" type="text"/>
     <span>'</span>
-    <select id="latDir">
-      <option value="N">N</option>
-      <option value="S">S</option>
-    </select>
+    <select id="latDir"><option value="N">N</option><option value="S">S</option></select>
   </div>
 
   <div class="coord-label">Longitude:</div>
   <div class="coord-input-group">
-    <input id="lonDeg" placeholder="Deg" type="text" style="width:50px;"/>
+    <input id="lonDeg" placeholder="Deg" type="text"/>
     <span>°</span>
-    <input id="lonMin" placeholder="Min" type="text" style="width:60px;"/>
+    <input id="lonMin" placeholder="Min" type="text"/>
     <span>'</span>
-    <select id="lonDir">
-      <option value="E">E</option>
-      <option value="W">W</option>
-    </select>
+    <select id="lonDir"><option value="E">E</option><option value="W">W</option></select>
   </div>
 
   <a id="goBtn" class="btn" style="margin-top:6px;">Go/Add</a>
@@ -169,15 +153,29 @@ input[type=text], textarea {
 
 <script>
 // ================= MAP =================
-const imageUrl = '70001.JPG';
+const map = L.map('map', {minZoom:2, maxZoom:18});
 
-const bounds = [
-  [20.42333, 89.00],   // bottom-left
-  [22.66667, 92.00]    // top-right
+// ================= ALL CHART TILES =================
+const tiles = [
+  // ORIGINAL
+  { image:'70001.JPG', bounds:[[20.42333,89.0],[22.66667,92.0]] },
+
+  { image:'one.JPG',   bounds:[[20.0,92.0],[21.0,92.8333]] },
+  { image:'two.JPG',   bounds:[[21.0,92.0],[22.0,92.8333]] },
+  { image:'three.JPG', bounds:[[19.0,90.5],[20.4233,92.0]] },
+  { image:'four.JPG',  bounds:[[19.0,89.125],[20.4233,91.0]] },
+  { image:'five.JPG',  bounds:[[17.0,89.0],[19.0,91.0]] }
 ];
 
-const map = L.map('map', {minZoom:2, maxZoom:18}).fitBounds(bounds);
-L.imageOverlay(imageUrl, bounds).addTo(map);
+const overlays=[];
+tiles.forEach(t=>{
+  const o=L.imageOverlay(t.image,t.bounds).addTo(map);
+  overlays.push(o);
+});
+
+// fit to all
+const group=L.featureGroup(overlays);
+map.fitBounds(group.getBounds());
 
 // ================= DATA =================
 let waypoints = [];
@@ -190,20 +188,13 @@ const listDiv = document.getElementById('list');
 const coordsOut = document.getElementById('coordsOut');
 const routeSummaryDiv = document.getElementById('routeSummary');
 
-// ================= COORDINATE CONVERSION =================
+// ================= COORD CONVERSION =================
 function decimalToDMS(decimal, isLat) {
   const absolute = Math.abs(decimal);
   const degrees = Math.floor(absolute);
   const minutesDecimal = (absolute - degrees) * 60;
   const minutes = minutesDecimal.toFixed(3);
-  
-  let direction;
-  if (isLat) {
-    direction = decimal >= 0 ? 'N' : 'S';
-  } else {
-    direction = decimal >= 0 ? 'E' : 'W';
-  }
-  
+  const direction = isLat ? (decimal >= 0 ? 'N' : 'S') : (decimal >= 0 ? 'E' : 'W');
   return `${degrees}° ${minutes}' ${direction}`;
 }
 
@@ -213,21 +204,19 @@ function formatCoordinates(lat, lon) {
 
 function dmsToDecimal(degrees, minutes, direction) {
   let decimal = parseFloat(degrees) + parseFloat(minutes) / 60;
-  if (direction === 'S' || direction === 'W') {
-    decimal = -decimal;
-  }
+  if (direction === 'S' || direction === 'W') decimal = -decimal;
   return decimal;
 }
 
 // ================= FUNCTIONS =================
 function renderList(){
-  listDiv.innerHTML = '';
+  listDiv.innerHTML='';
   waypoints.forEach(w=>{
-    const div = document.createElement('div');
-    div.className = 'waypoint-item';
-    div.innerHTML = `
+    const div=document.createElement('div');
+    div.className='waypoint-item';
+    div.innerHTML=`
       <b>${w.name}</b><br>
-      <span class="small">${formatCoordinates(w.lat, w.lon)}</span><br>
+      <span class="small">${formatCoordinates(w.lat,w.lon)}</span><br>
       <a class="btn small" onclick="editWaypoint(${w.id})">✏️</a>
       <a class="btn small" style="background:#dc3545" onclick="deleteWaypoint(${w.id})">🗑️</a>
       <a class="btn small" style="background:#6f42c1" onclick="selectWaypoint(${w.id})">🎯</a>
@@ -237,15 +226,15 @@ function renderList(){
 }
 
 function addWaypoint(lat,lon,name){
-  const id = Date.now()+Math.floor(Math.random()*999);
-  const wp = {id,lat,lon,name:name||('WP-'+(waypoints.length+1))};
+  const id=Date.now()+Math.floor(Math.random()*999);
+  const wp={id,lat,lon,name:name||('WP-'+(waypoints.length+1))};
   waypoints.push(wp);
 
-  const marker = L.circleMarker([lat,lon],{
+  const marker=L.circleMarker([lat,lon],{
     radius:6,color:'#f00',fillColor:'#f00',fillOpacity:0.9
   })
   .addTo(map)
-  .bindPopup(`<b>${wp.name}</b><br>${formatCoordinates(lat, lon)}`);
+  .bindPopup(`<b>${wp.name}</b><br>${formatCoordinates(lat,lon)}`);
 
   marker.on('click',()=>selectWaypoint(wp.id));
   markers[id]=marker;
@@ -255,12 +244,11 @@ function addWaypoint(lat,lon,name){
 }
 
 function editWaypoint(id){
-  const wp = waypoints.find(w=>w.id===id);
+  const wp=waypoints.find(w=>w.id===id);
   if(!wp)return;
-  const newName = prompt('Rename waypoint:', wp.name);
-  if(newName!==null && newName.trim()!==''){ wp.name = newName.trim(); }
-  renderList();
-  saveLocal();
+  const newName=prompt('Rename waypoint:',wp.name);
+  if(newName!==null && newName.trim()!=='') wp.name=newName.trim();
+  renderList(); saveLocal();
 }
 
 function deleteWaypoint(id){
@@ -268,12 +256,11 @@ function deleteWaypoint(id){
   waypoints=waypoints.filter(w=>w.id!==id);
   map.removeLayer(markers[id]);
   delete markers[id];
-  renderList();
-  saveLocal();
+  renderList(); saveLocal();
 }
 
 function selectWaypoint(id){
-  const idx = selected.indexOf(id);
+  const idx=selected.indexOf(id);
   if(idx===-1) selected.push(id);
   else selected.splice(idx,1);
 
@@ -286,37 +273,29 @@ function selectWaypoint(id){
 
 // ================= NAV CALC =================
 function haversineNM(lat1,lon1,lat2,lon2){
-  const R=6371e3, toRad=v=>v*Math.PI/180;
+  const R=6371e3,toRad=v=>v*Math.PI/180;
   const φ1=toRad(lat1),φ2=toRad(lat2),Δφ=toRad(lat2-lat1),Δλ=toRad(lon2-lon1);
   const a=Math.sin(Δφ/2)**2+Math.cos(φ1)*Math.cos(φ2)*Math.sin(Δλ/2)**2;
   return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a))/1852;
 }
 
 function calculateBearing(lat1, lon1, lat2, lon2) {
-  const toRad = v => v * Math.PI / 180;
-  const toDeg = v => v * 180 / Math.PI;
-  
-  const φ1 = toRad(lat1);
-  const φ2 = toRad(lat2);
-  const Δλ = toRad(lon2 - lon1);
-  
-  const y = Math.sin(Δλ) * Math.cos(φ2);
-  const x = Math.cos(φ1) * Math.sin(φ2) - Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ);
-  
-  let bearing = toDeg(Math.atan2(y, x));
-  bearing = (bearing + 360) % 360; // Normalize to 0-360
-  
-  return bearing;
+  const toRad=v=>v*Math.PI/180, toDeg=v=>v*180/Math.PI;
+  const φ1=toRad(lat1), φ2=toRad(lat2), Δλ=toRad(lon2-lon1);
+  const y=Math.sin(Δλ)*Math.cos(φ2);
+  const x=Math.cos(φ1)*Math.sin(φ2)-Math.sin(φ1)*Math.cos(φ2)*Math.cos(Δλ);
+  let b=toDeg(Math.atan2(y,x));
+  return (b+360)%360;
 }
 
 function makeRoute(){
-  if(selected.length<2){alert('Select at least 2'); return;}
+  if(selected.length<2){alert('Select at least 2');return;}
 
   if(routeLayer) map.removeLayer(routeLayer);
   checkpointMarkers.forEach(cp=>map.removeLayer(cp));
   checkpointMarkers=[];
 
-  const latlngs = selected.map(id=>{
+  const latlngs=selected.map(id=>{
     const w=waypoints.find(wp=>wp.id===id);
     return [w.lat,w.lon];
   });
@@ -325,15 +304,16 @@ function makeRoute(){
 
   let total=0;
   const speed=parseFloat(document.getElementById('speedInput').value)||0;
-
   routeSummaryDiv.innerHTML='';
+
   for(let i=0;i<selected.length-1;i++){
     const a=waypoints.find(w=>w.id===selected[i]);
     const b=waypoints.find(w=>w.id===selected[i+1]);
     const dist=haversineNM(a.lat,a.lon,b.lat,b.lon);
     const bearing=calculateBearing(a.lat,a.lon,b.lat,b.lon);
     total+=dist;
-    const time=speed>0 ? (dist/speed*60) : 0;
+    const time=speed>0?(dist/speed*60):0;
+
     routeSummaryDiv.innerHTML+=`${a.name} → ${b.name}: ${dist.toFixed(2)} NM, ${bearing.toFixed(1)}°, ${time.toFixed(1)} min<br>`;
   }
   routeSummaryDiv.innerHTML+=`<b>Total:</b> ${total.toFixed(2)} NM`;
@@ -358,30 +338,15 @@ function loadLocal(){
 
 // ================= EVENTS =================
 map.on('click',e=>{
-  coordsOut.textContent=formatCoordinates(e.latlng.lat, e.latlng.lng);
+  coordsOut.textContent=formatCoordinates(e.latlng.lat,e.latlng.lng);
   addWaypoint(e.latlng.lat,e.latlng.lng);
 });
 
 goBtn.onclick=()=>{
-  const latDeg = document.getElementById('latDeg').value;
-  const latMin = document.getElementById('latMin').value;
-  const latDir = document.getElementById('latDir').value;
-  const lonDeg = document.getElementById('lonDeg').value;
-  const lonMin = document.getElementById('lonMin').value;
-  const lonDir = document.getElementById('lonDir').value;
+  const lat=dmsToDecimal(latDeg.value,latMin.value,latDir.value);
+  const lon=dmsToDecimal(lonDeg.value,lonMin.value,lonDir.value);
 
-  if(!latDeg || !latMin || !lonDeg || !lonMin){
-    alert('Please enter all coordinate values');
-    return;
-  }
-
-  const lat = dmsToDecimal(latDeg, latMin, latDir);
-  const lon = dmsToDecimal(lonDeg, lonMin, lonDir);
-
-  if(isNaN(lat) || isNaN(lon)){
-    alert('Invalid coordinates');
-    return;
-  }
+  if(isNaN(lat)||isNaN(lon)){ alert('Invalid'); return; }
 
   map.setView([lat,lon],12);
   addWaypoint(lat,lon,'Manual');
@@ -390,26 +355,8 @@ goBtn.onclick=()=>{
 routeBtn.onclick=makeRoute;
 clearRouteBtn.onclick=clearRoute;
 
-// INIT
 loadLocal();
 </script>
 
 </body>
 </html>
-```
-
-**Key changes made:**
-
-1. **Added `calculateBearing()` function**: This calculates the true bearing (0-360°) from one waypoint to another using the standard aviation formula
-
-2. **Updated route summary**: Each leg now shows:
-   - Waypoint A → Waypoint B
-   - Distance in NM
-   - **Bearing in degrees (°)** - NEW!
-   - Time in minutes (if speed is entered)
-
-**Example output:**
-```
-WP-1 → WP-2: 15.43 NM, 045.2°, 18.5 min
-WP-2 → WP-3: 22.18 NM, 137.8°, 26.6 min
-Total: 37.61 NM
